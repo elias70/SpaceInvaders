@@ -41,6 +41,61 @@ class DISPLAY:  #---------------------------------------------------------------
 
 
 
+class COLLITION_MANAGER: #-------------------------------------------------------------------------------------------------------------------------
+
+#   Methods
+    def manageBulletCollition(self, roundIndex):
+        global rounds, enemies
+
+        self.victimX = rounds[roundIndex].getX
+        self.victimY = rounds[roundIndex].getY -1
+
+        for i in enemies:
+            if enemies[i].getX == self.victimX and enemies[i].getY == self.victimY:
+                self.victimIndex = i
+                break
+
+        enemies[self.victimIndex].changeHealth(rounds[roundIndex].getDamage)        # Subtract the taken damage
+
+        if enemies[self.victimIndex].getHealth <= 0:                                # Deleting the enemy when his hp is <= 0
+            enemies.pop(self.victimIndex)
+
+        rounds.pop(roundIndex)                                                      # Deleting the round
+
+
+    def manageEnemyCollition(self, enemyIndex):
+        global rounds, enemies
+
+        self.roundX = enemies[enemyIndex].getX
+        self.roundY = enemies[enemyIndex].getY +1
+
+        for i in rounds:
+            if rounds[i].getX == self.roundX and rounds[i].getY == self.roundY:
+                self.roundIndex = i
+                break
+
+        enemies[enemyIndex].changeHealth(rounds[self.roundIndex].getDamage)         # Subtract the taken damage
+
+        if enemies[self.roundIndex].getHealth <= 0:                                 # Deleting the enemy when his hp is <= 0
+            enemies.pop(self.roundIndex)
+
+        rounds.pop(enemyIndex)                                                      # Deleting the round
+
+
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
 class ITEM: #-------------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
@@ -69,8 +124,14 @@ class ITEM: #-------------------------------------------------------------------
         return self.itemType
 
     def moveDown(self):
-        
         self.yPosition += 1
+
+    def tryMoveDown(self):                        # Trying to move down, return 0 when successful and 1 when not
+        if displayArray[self.xPosition][self.yPosition +1] == ' ':
+            self.moveDown()
+            return 0
+        else:
+            return 1
 
 
 
@@ -104,14 +165,21 @@ class ENEMY:    #---------------------------------------------------------------
     def getType(self):
         return self.enemyType
 
-    def changeHealth(self, value):
-        self.health += ValueError
+    def changeHealth(self, subtractedValue):
+        self.health -= subtractedValue
 
     def getHealth(self):
         return self.health
 
     def moveDown(self):
         self.yPosition += 1
+
+    def tryMoveDown(self):                        # Trying to move down, return 0 when successful and 1 when not
+        if displayArray[self.xPosition][self.yPosition +1] == ' ':
+            self.moveDown()
+            return 0
+        else:
+            return 1
 
 
 
@@ -145,17 +213,24 @@ class ROUND:    #---------------------------------------------------------------
     def getType(self):
         return self.ammoType
 
+    def getDamage(self):
+        return self.damage
+
     def moveUp(self):
-        global displayArray
-        if displayArray[self.xPosition][self.yPosition-1] == ' ':    
-            self.yPosition -= 1
+        self.yPosition -= 1
 
-
+    def tryMoveUp(self):                        # Trying to move up, return 0 when successful and 1 when not
+        if displayArray[self.xPosition][self.yPosition -1] == ' ':
+            self.moveUp()
+            return 0
+        else:
+            return 1
 
 
 
 
 class PLAYER:   #----------------------------------------------------------------------------------------------------------------------------------
+
 
 #   Constructor/Attributes
     def __init__(self, x = 0, y = 0, spaceship = '?'):
@@ -164,8 +239,6 @@ class PLAYER:   #---------------------------------------------------------------
         self.playerSpaceship = spaceship
         self.round = '|'
         self.health = 100
-
-        self.round = []
 
 #   Methods
     def moveX(self, x):
@@ -193,7 +266,7 @@ class PLAYER:   #---------------------------------------------------------------
         return self.round
 
     def changeHealth(self, value):
-        self.health += ValueError
+        self.health = value
 
     def getHealth(self):
         return self.health
@@ -207,12 +280,13 @@ class PLAYER:   #---------------------------------------------------------------
     def moveRight(self):
         self.xPosition += 1
 
-    def shoot(self):
-        self.round.addend(ROUND(self.xPosition, self.yPosition+1, '|', 20))
+    def shoot(self):        
+        global rounds
+        rounds.extend(ROUND(self.xPosition, self.yPosition+1, '|', 100))
 
 
 
-
+    # TryMove methods needed
 
 
 
@@ -228,12 +302,29 @@ class PLAYER:   #---------------------------------------------------------------
 # Attributes
 displayArray = []
 display = DISPLAY(20, 8)
+rounds = []
 player = PLAYER(display.SizeX-3, int(display.SizeY/2), 'A')
+enemies = []
+collition_manager = COLLITION_MANAGER()
 
 # Functions
 
+def addEnemy(self, x, y, type, hp):
+    global enemies
+    enemies.extend(ENEMY(self.xPosition, self.yPosition+1, 'O', 100))
 
 
+def moveRounds(self):
+    global rounds, collition_manager
+    for i in rounds:
+        if i.tryMoveUp == 1:
+            collition_manager.manageBulletCollition(i)
+
+def moveEnemies(self):
+    global enemies, collition_manager
+    for i in enemies:
+        if i.tryMoveUp == 1:
+            collition_manager.manageBulletCollition(i)
 
 
 
@@ -251,5 +342,3 @@ try:
 
 except KeyboardInterrupt:
     sys.exit()
-
-
