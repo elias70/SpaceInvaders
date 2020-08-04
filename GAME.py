@@ -1,4 +1,5 @@
 import time, sys, os
+import KeyPoller
 
 
 
@@ -7,9 +8,10 @@ class DISPLAY:  #---------------------------------------------------------------
 #   Constructor/Attributes
     def __init__(self, xSize, ySize):
         global displayArray
-        displayArray = [[' ' for i in range(xSize)] for j in range (ySize)]
         self.SizeX = xSize
         self.SizeY = ySize
+        displayArray = [[' ' for i in range(self.SizeX)] for j in range (self.SizeY)]
+        
 
 #   Methods
 
@@ -24,7 +26,9 @@ class DISPLAY:  #---------------------------------------------------------------
 
     def refresh(self):
         os.system('clear')
+        self.setAllPositions()
         self.print2DArray(displayArray)
+        
 
     def setBorder(self):
         displayArray[0] = ['#']*len(displayArray[0])                           # Sets the upper row
@@ -35,7 +39,25 @@ class DISPLAY:  #---------------------------------------------------------------
             displayArray[i][-1] = '#'                                                  # Sets the right column
 
     def setXY(self, x, y, char):
-        displayArray[x][y] = char
+        global displayArray
+        displayArray[y][x] = char
+
+    def setAllPositions(self):
+        
+        for i in range(len(displayArray)):
+            for j in range(1,len(displayArray[i])-2):
+                displayArray[i][j] = ' '                                                 # Sets the left column
+
+        for i in rounds:
+            self.setXY(i.getX(), i.getY(), i.getType())
+
+        for i in enemies:
+            self.setXY(i.getX(), i.getY(), i.getType())
+
+        self.setXY(player.getX(), player.getY(), player.getSpaceship())
+
+        
+
 
 
 
@@ -126,8 +148,8 @@ class ITEM: #-------------------------------------------------------------------
     def moveDown(self):
         self.yPosition += 1
 
-    def tryMoveDown(self):                        # Trying to move down, return 0 when successful and 1 when not
-        if displayArray[self.xPosition][self.yPosition +1] == ' ':
+    def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition][self.xPosition +1] == ' ':
             self.moveDown()
             return 0
         else:
@@ -174,8 +196,8 @@ class ENEMY:    #---------------------------------------------------------------
     def moveDown(self):
         self.yPosition += 1
 
-    def tryMoveDown(self):                        # Trying to move down, return 0 when successful and 1 when not
-        if displayArray[self.xPosition][self.yPosition +1] == ' ':
+    def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition][self.xPosition +1] == ' ':
             self.moveDown()
             return 0
         else:
@@ -219,8 +241,8 @@ class ROUND:    #---------------------------------------------------------------
     def moveUp(self):
         self.yPosition -= 1
 
-    def tryMoveUp(self):                        # Trying to move up, return 0 when successful and 1 when not
-        if displayArray[self.xPosition][self.yPosition -1] == ' ':
+    def tryMoveUp(self):                        # Trying to move up, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition][self.xPosition -1] == ' ':
             self.moveUp()
             return 0
         else:
@@ -274,24 +296,46 @@ class PLAYER:   #---------------------------------------------------------------
     def moveUp(self):
         self.yPosition -= 1
 
+    def moveDown(self):
+        self.yPosition += 1
+
     def moveLeft(self):
         self.xPosition -= 1
 
     def moveRight(self):
         self.xPosition += 1
 
+    def tryMoveUp(self):                        # Trying to move up, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition][self.xPosition -1] == ' ':
+            self.moveUp()
+            return 0
+        else:
+            return 1
+
+    def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition][self.xPosition +1] == ' ':
+            self.moveDown()
+            return 0
+        else:
+            return 1
+
+    def tryMoveRight(self):                        # Trying to move right, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition +1][self.xPosition] == ' ':
+            self.moveRight()
+            return 0
+        else:
+            return 1
+
+    def tryMoveLeft(self):                        # Trying to move left, returns 0 when successful and 1 when not
+        if displayArray[self.yPosition -1][self.xPosition] == ' ':
+            self.moveLeft()
+            return 0
+        else:
+            return 1
+
     def shoot(self):        
         global rounds
         rounds.extend(ROUND(self.xPosition, self.yPosition+1, '|', 100))
-
-
-
-    # TryMove methods needed
-
-
-
-
-
 
 
 
@@ -303,7 +347,7 @@ class PLAYER:   #---------------------------------------------------------------
 displayArray = []
 display = DISPLAY(20, 8)
 rounds = []
-player = PLAYER(display.SizeX-3, int(display.SizeY/2), 'A')
+player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
 enemies = []
 collition_manager = COLLITION_MANAGER()
 
@@ -331,14 +375,21 @@ def moveEnemies(self):
 
 # RUN     ----------------------------------------------------------------------------------------------------------------------------------------
 
-try:
+with KeyPoller.KeyPoller() as keyPoller:
     display.setBorder()
+    keyPoller = KeyPoller.KeyPoller()
     while True:
         display.refresh()
 
-
-
-
-
-except KeyboardInterrupt:
-    sys.exit()
+        c = keyPoller.poll() 
+        if not c is None:
+            if c == "w":
+                player.tryMoveUp()
+            elif c == "s":
+                player.tryMoveDown()
+            elif c == "d":
+                player.tryMoveRight()
+            elif c == "a":
+                player.tryMoveLeft()
+            elif c == "q":
+                break
