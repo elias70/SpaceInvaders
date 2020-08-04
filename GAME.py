@@ -1,6 +1,4 @@
-import time, sys, os
-import KeyPoller
-
+import time, sys, os, random, KeyPoller
 
 
 class DISPLAY:  #---------------------------------------------------------------------------------------------------------------------------------
@@ -14,16 +12,14 @@ class DISPLAY:  #---------------------------------------------------------------
         
 
 #   Methods
-
-    def printArray(self, array):
-        for i in array:
-            print(i, end='')                    # Prints every element without a seperator
-        print()                                 # Ends the line with a break
-
     def print2DArray(self, array2D):
+        output = ''
         for i in array2D:
-            self.printArray(i)                  # Prints one line
-
+            for j in i:
+                output += j
+            output += '\n'
+        print(output)
+        
     def refresh(self):
         os.system('clear')
         self.setAllPositions()
@@ -43,9 +39,8 @@ class DISPLAY:  #---------------------------------------------------------------
         displayArray[y][x] = char
 
     def setAllPositions(self):
-        
-        for i in range(len(displayArray)):
-            for j in range(1,len(displayArray[i])-2):
+        for i in range(1, len(displayArray)-1):
+            for j in range(1,len(displayArray[i])-1):
                 displayArray[i][j] = ' '                                                 # Sets the left column
 
         for i in rounds:
@@ -60,27 +55,22 @@ class DISPLAY:  #---------------------------------------------------------------
 
 
 
-
-
-
 class COLLITION_MANAGER: #-------------------------------------------------------------------------------------------------------------------------
 
 #   Methods
     def manageBulletCollition(self, roundIndex):
         global rounds, enemies
-
-        self.victimX = rounds[roundIndex].getX
-        self.victimY = rounds[roundIndex].getY -1
+        self.victimIndex = 0
+        self.victimX = rounds[roundIndex].getX()
+        self.victimY = rounds[roundIndex].getY() -1
 
         for i in enemies:
-            if enemies[i].getX == self.victimX and enemies[i].getY == self.victimY:
-                self.victimIndex = i
+            if i.getX() == self.victimX and i.getY() == self.victimY:
+                self.victimIndex = enemies.index(i)
+                enemies[self.victimIndex].changeHealth(rounds[roundIndex].getDamage())        # Subtract the taken damage
+                if enemies[self.victimIndex].getHealth() <= 0:                                # Deleting the enemy when his hp is <= 0
+                    enemies.pop(self.victimIndex)
                 break
-
-        enemies[self.victimIndex].changeHealth(rounds[roundIndex].getDamage)        # Subtract the taken damage
-
-        if enemies[self.victimIndex].getHealth <= 0:                                # Deleting the enemy when his hp is <= 0
-            enemies.pop(self.victimIndex)
 
         rounds.pop(roundIndex)                                                      # Deleting the round
 
@@ -88,35 +78,22 @@ class COLLITION_MANAGER: #------------------------------------------------------
     def manageEnemyCollition(self, enemyIndex):
         global rounds, enemies
 
-        self.roundX = enemies[enemyIndex].getX
-        self.roundY = enemies[enemyIndex].getY +1
+        self.roundX = enemies[enemyIndex].getX()
+        self.roundY = enemies[enemyIndex].getY() +1
 
         for i in rounds:
-            if rounds[i].getX == self.roundX and rounds[i].getY == self.roundY:
-                self.roundIndex = i
+            if i.getX == self.roundX and i.getY == self.roundY:
+                self.roundIndex = rounds.index(i)
+                enemies[enemyIndex].changeHealth(rounds[self.roundIndex].getDamage())         # Subtract the taken damage
+                if enemies[self.roundIndex].getHealth() <= 0:                                 # Deleting the enemy when his hp is <= 0
+                    enemies.pop(self.roundIndex)
                 break
-
-        enemies[enemyIndex].changeHealth(rounds[self.roundIndex].getDamage)         # Subtract the taken damage
-
-        if enemies[self.roundIndex].getHealth <= 0:                                 # Deleting the enemy when his hp is <= 0
-            enemies.pop(self.roundIndex)
 
         rounds.pop(enemyIndex)                                                      # Deleting the round
 
 
 
         
-
-
-
-
-
-
-
-
-
-
-
 
 class ITEM: #-------------------------------------------------------------------------------------------------------------------------------------
 
@@ -242,7 +219,7 @@ class ROUND:    #---------------------------------------------------------------
         self.yPosition -= 1
 
     def tryMoveUp(self):                        # Trying to move up, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition][self.xPosition -1] == ' ':
+        if displayArray[self.yPosition -1][self.xPosition] == ' ':
             self.moveUp()
             return 0
         else:
@@ -305,37 +282,45 @@ class PLAYER:   #---------------------------------------------------------------
     def moveRight(self):
         self.xPosition += 1
 
-    def tryMoveUp(self):                        # Trying to move up, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition][self.xPosition -1] == ' ':
+    def tryMoveUp(self):                        # Trying to move up, returns 0 when successful and 1 when not, returns 2 when hitting a wall
+        if displayArray[self.yPosition-1][self.xPosition] == ' ':
             self.moveUp()
             return 0
+        elif displayArray[self.yPosition-1][self.xPosition] == '#':
+            return 2
         else:
             return 1
 
-    def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition][self.xPosition +1] == ' ':
+    def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not, returns 2 when hitting a wall
+        if displayArray[self.yPosition +1][self.xPosition] == ' ':
             self.moveDown()
             return 0
+        elif displayArray[self.yPosition +1][self.xPosition] == '#':
+            return 2
         else:
             return 1
 
-    def tryMoveRight(self):                        # Trying to move right, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition +1][self.xPosition] == ' ':
+    def tryMoveRight(self):                        # Trying to move right, returns 0 when successful and 1 when not, returns 2 when hitting a wall
+        if displayArray[self.yPosition][self.xPosition +1] == ' ':
             self.moveRight()
             return 0
+        elif displayArray[self.yPosition][self.xPosition +1] == '#':
+            return 2
         else:
             return 1
 
-    def tryMoveLeft(self):                        # Trying to move left, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition -1][self.xPosition] == ' ':
+    def tryMoveLeft(self):                        # Trying to move left, returns 0 when successful and 1 when not, returns 2 when hitting a wall
+        if displayArray[self.yPosition][self.xPosition -1] == ' ':
             self.moveLeft()
             return 0
+        elif displayArray[self.yPosition][self.xPosition -1] == '#':
+            return 2
         else:
             return 1
 
     def shoot(self):        
         global rounds
-        rounds.extend(ROUND(self.xPosition, self.yPosition+1, '|', 100))
+        rounds.extend([ROUND(self.xPosition, self.yPosition -1, '|', 100)])
 
 
 
@@ -345,30 +330,32 @@ class PLAYER:   #---------------------------------------------------------------
 
 # Attributes
 displayArray = []
-display = DISPLAY(20, 8)
+display = DISPLAY(50, 20)
 rounds = []
 player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
 enemies = []
 collition_manager = COLLITION_MANAGER()
 
+timer = 0
+
 # Functions
 
-def addEnemy(self, x, y, type, hp):
+def addEnemy(x, y, type = 'O', hp = 100):
     global enemies
-    enemies.extend(ENEMY(self.xPosition, self.yPosition+1, 'O', 100))
+    enemies.extend([ENEMY(x, y, type, hp)])
 
 
-def moveRounds(self):
+def moveRounds():
     global rounds, collition_manager
     for i in rounds:
-        if i.tryMoveUp == 1:
-            collition_manager.manageBulletCollition(i)
+        if i.tryMoveUp() == 1:
+            collition_manager.manageBulletCollition(rounds.index(i))
 
-def moveEnemies(self):
+def moveEnemies():
     global enemies, collition_manager
     for i in enemies:
-        if i.tryMoveUp == 1:
-            collition_manager.manageBulletCollition(i)
+        if i.tryMoveDown() == 1:
+            collition_manager.manageEnemyCollition(enemies.index(i))
 
 
 
@@ -379,7 +366,14 @@ with KeyPoller.KeyPoller() as keyPoller:
     display.setBorder()
     keyPoller = KeyPoller.KeyPoller()
     while True:
+        timer += 1
         display.refresh()
+
+        if timer == 15:
+            moveRounds()
+        elif timer == 120:
+            moveEnemies()
+            timer = 0
 
         c = keyPoller.poll() 
         if not c is None:
@@ -391,5 +385,9 @@ with KeyPoller.KeyPoller() as keyPoller:
                 player.tryMoveRight()
             elif c == "a":
                 player.tryMoveLeft()
+            elif c == "e":
+                addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
+            elif c == " ":
+                player.shoot()
             elif c == "q":
                 break
