@@ -67,12 +67,12 @@ class COLLITION_MANAGER: #------------------------------------------------------
         for i in enemies:
             if i.getX() == self.victimX and i.getY() == self.victimY:
                 self.victimIndex = enemies.index(i)
+                rounds.pop(roundIndex)                                                      # Deleting the round
                 enemies[self.victimIndex].changeHealth(rounds[roundIndex].getDamage())        # Subtract the taken damage
                 if enemies[self.victimIndex].getHealth() <= 0:                                # Deleting the enemy when his hp is <= 0
                     enemies.pop(self.victimIndex)
                 break
 
-        rounds.pop(roundIndex)                                                      # Deleting the round
 
 
     def manageEnemyCollition(self, enemyIndex):
@@ -81,15 +81,19 @@ class COLLITION_MANAGER: #------------------------------------------------------
         self.roundX = enemies[enemyIndex].getX()
         self.roundY = enemies[enemyIndex].getY() +1
 
-        for i in rounds:
+        for i in rounds:                                                                      # Testing if object is a round
             if i.getX == self.roundX and i.getY == self.roundY:
                 self.roundIndex = rounds.index(i)
+                rounds.pop(self.roundIndex)                                                   # Deleting the round
                 enemies[enemyIndex].changeHealth(rounds[self.roundIndex].getDamage())         # Subtract the taken damage
                 if enemies[self.roundIndex].getHealth() <= 0:                                 # Deleting the enemy when his hp is <= 0
                     enemies.pop(self.roundIndex)
                 break
-
-        rounds.pop(enemyIndex)                                                      # Deleting the round
+        
+        if player.getX == self.roundX and player.getY == self.roundY:                         # Testing if object is the player
+            player.removeHealth(enemies[enemyIndex].getDamage())
+            if player.getHealth < 0:
+                # Action when player dies
 
 
 
@@ -139,11 +143,12 @@ class ITEM: #-------------------------------------------------------------------
 class ENEMY:    #---------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
-    def __init__(self, x = 0, y = 0, type = '?', hp = 100):
+    def __init__(self, x = 0, y = 0, type = '?', hp = 100, damage = 25):
         self.xPosition = x
         self.yPosition = y
         self.enemyType = type
         self.health = hp
+        self.damage = damage
 
 #   Methods
     def moveX(self, x):
@@ -163,6 +168,9 @@ class ENEMY:    #---------------------------------------------------------------
 
     def getType(self):
         return self.enemyType
+
+    def getDamage(self):
+        return self.damage
 
     def changeHealth(self, subtractedValue):
         self.health -= subtractedValue
@@ -264,8 +272,8 @@ class PLAYER:   #---------------------------------------------------------------
     def getRound(self):
         return self.round
 
-    def changeHealth(self, value):
-        self.health = value
+    def removeHealth(self, value):
+        self.health -= value
 
     def getHealth(self):
         return self.health
@@ -369,10 +377,12 @@ with KeyPoller.KeyPoller() as keyPoller:
         timer += 1
         display.refresh()
 
-        if timer == 15:
+        if timer%15 == 0:
             moveRounds()
-        elif timer == 120:
+        elif timer > 120 and timer < 123:
             moveEnemies()
+        elif timer > 240:
+            addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
             timer = 0
 
         c = keyPoller.poll() 
@@ -385,8 +395,6 @@ with KeyPoller.KeyPoller() as keyPoller:
                 player.tryMoveRight()
             elif c == "a":
                 player.tryMoveLeft()
-            elif c == "e":
-                addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
             elif c == " ":
                 player.shoot()
             elif c == "q":
