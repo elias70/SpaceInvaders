@@ -10,7 +10,6 @@ class DISPLAY:  #---------------------------------------------------------------
         self.SizeY = ySize
         displayArray = [[' ' for i in range(self.SizeX)] for j in range (self.SizeY)]
         
-
 #   Methods
     def print2DArray(self, array2D):
         output = ''
@@ -21,12 +20,15 @@ class DISPLAY:  #---------------------------------------------------------------
         print(output)
         
     def refresh(self):
+        global stop
         os.system('clear')
         self.setAllPositions()
         self.setHealth()
+        self.setScore()
+        if stop == True:
+            self.setGameOver()
         self.print2DArray(displayArray)
         
-
     def setBorder(self):
         displayArray[0] = ['#']*len(displayArray[0])                           # Sets the upper row
         displayArray[-1] = ['#']*len(displayArray[-1])                         # Sets the lower row
@@ -39,7 +41,7 @@ class DISPLAY:  #---------------------------------------------------------------
         global displayArray
         displayArray[y][x] = char
 
-    def setAllPositions(self):
+    def setAllPositions(self):                                                      # Sets all positions of all object
         for i in range(1, len(displayArray)-1):
             for j in range(1,len(displayArray[i])-1):
                 displayArray[i][j] = ' '                                                 # Sets the left column
@@ -63,6 +65,21 @@ class DISPLAY:  #---------------------------------------------------------------
             if len(num) > 2:
                 self.setXY(self.SizeX -6, 1, num[len(num)-3])
 
+    def setScore(self):
+        global score
+        num = str(score)
+        self.setXY(4, 1, num[len(num)-1])
+        if len(num) > 1: 
+            self.setXY(3, 1, num[len(num)-2])
+            if len(num) > 2:
+                self.setXY(2, 1, num[len(num)-3])
+
+    def setGameOver(self):
+        x = int((self.SizeX/2) -4)
+        for i in 'GAME OVER':
+            self.setXY(x, int(self.SizeY/2), i)
+            x += 1
+
         
 
 
@@ -71,7 +88,7 @@ class COLLITION_MANAGER: #------------------------------------------------------
 
 #   Methods
     def manageBulletCollition(self, roundIndex):
-        global rounds, enemies
+        global rounds, enemies, score
         self.victimIndex = 0
         self.victimX = rounds[roundIndex].getX()
         self.victimY = rounds[roundIndex].getY() -1
@@ -82,16 +99,17 @@ class COLLITION_MANAGER: #------------------------------------------------------
                 enemies[self.victimIndex].changeHealth(rounds[roundIndex].getDamage())        # Subtract the taken damage
                 if enemies[self.victimIndex].getHealth() <= 0:                                # Deleting the enemy when his hp is <= 0
                     enemies.pop(self.victimIndex)
+                    score += 3
                 break
         for i in items:
             if i.getX() == self.victimX and i.getY() == self.victimY:
                 self.victimIndex = items.index(i)
-                items.pop(self.victimIndex)                                             # Deleting the item
+                items.pop(self.victimIndex)                                            # Deleting the item
                 break
         rounds.pop(roundIndex)                                                              # Deleting the round
 
     def manageEnemyCollition(self, enemyIndex):
-        global rounds, enemies
+        global rounds, enemies, displayArray
 
         self.targetX = enemies[enemyIndex].getX()
         self.targetY = enemies[enemyIndex].getY() +1
@@ -109,14 +127,13 @@ class COLLITION_MANAGER: #------------------------------------------------------
             player.removeHealth(enemies[enemyIndex].getDamage())                              # Subtract the taken damage
             enemies.pop(enemyIndex)                                                      # Deleting the enemy
             if player.getHealth() <= 0:
-                print('Action when player dies')
+                gameOver()
         else:
-            enemies.pop(enemyIndex)                                                 # Deleting the enemy
-            
+            gameOver()         
 
 
     def manageItemCollition(self, itemIndex):
-        global rounds, items
+        global rounds, items, score
 
         self.targetX = items[itemIndex].getX()
         self.targetY = items[itemIndex].getY() +1
@@ -131,6 +148,7 @@ class COLLITION_MANAGER: #------------------------------------------------------
         if player.getX() == self.targetX and player.getY() == self.targetY:                   # Testing if object is the player
             if items[itemIndex].getType() == '+':
                 player.removeHealth(-25)
+                score += 1
             items.pop(itemIndex)                                                              # Deleting the enemy
         else:
             items.pop(itemIndex)
@@ -385,6 +403,8 @@ enemies = []
 items = []
 collition_manager = COLLITION_MANAGER()
 
+stop = False
+score = 0
 timer = 0
 
 # Functions
@@ -415,32 +435,35 @@ def moveItems():
         if i.tryMoveDown() == 1:
             collition_manager.manageItemCollition(items.index(i))
 
+def gameOver():
+    global stop
+    stop = True
+    display.refresh()
 
 
-
-# RUN     ----------------------------------------------------------------------------------------------------------------------------------------
+# MAIN     ----------------------------------------------------------------------------------------------------------------------------------------
 
 with KeyPoller.KeyPoller() as keyPoller:
     display.setBorder()
     keyPoller = KeyPoller.KeyPoller()
-    while True:
+    while stop == False:
         timer += 1
         display.refresh()
 
         if timer%15 == 0:
             moveRounds()
-            if timer%120 == 0:
+            if timer%240 == 0:
                 moveEnemies()
                 moveItems()
-                if timer%240 == 0:
+                if timer%480 == 0:
                     addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
-                    if timer > 480:
+                    if timer > 960:
                         nextXPos = random.randint(1, (len(displayArray[1])-2))
                         if displayArray[1][nextXPos] == ' ':
                             addItem(nextXPos, 1, '+')  
                         timer = 0
 
-        c = keyPoller.poll() 
+        c = keyPoller.poll()                                        # Gets user input
         if not c is None:
             if c == "w":
                 player.tryMoveUp()
