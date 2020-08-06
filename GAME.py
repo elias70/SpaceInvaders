@@ -23,6 +23,7 @@ class DISPLAY:  #---------------------------------------------------------------
     def refresh(self):
         os.system('clear')
         self.setAllPositions()
+        self.setHealth()
         self.print2DArray(displayArray)
         
 
@@ -49,7 +50,18 @@ class DISPLAY:  #---------------------------------------------------------------
         for i in enemies:
             self.setXY(i.getX(), i.getY(), i.getType())
 
+        for i in items:
+            self.setXY(i.getX(), i.getY(), i.getType())
+
         self.setXY(player.getX(), player.getY(), player.getSpaceship())
+
+    def setHealth(self):
+        num = str(player.getHealth())
+        self.setXY(self.SizeX -4, 1, num[len(num)-1])
+        if len(num) > 1: 
+            self.setXY(self.SizeX -5, 1, num[len(num)-2])
+            if len(num) > 2:
+                self.setXY(self.SizeX -6, 1, num[len(num)-3])
 
         
 
@@ -67,22 +79,25 @@ class COLLITION_MANAGER: #------------------------------------------------------
         for i in enemies:
             if i.getX() == self.victimX and i.getY() == self.victimY:
                 self.victimIndex = enemies.index(i)
-                rounds.pop(roundIndex)                                                      # Deleting the round
                 enemies[self.victimIndex].changeHealth(rounds[roundIndex].getDamage())        # Subtract the taken damage
                 if enemies[self.victimIndex].getHealth() <= 0:                                # Deleting the enemy when his hp is <= 0
                     enemies.pop(self.victimIndex)
                 break
-
-
+        for i in items:
+            if i.getX() == self.victimX and i.getY() == self.victimY:
+                self.victimIndex = items.index(i)
+                items.pop(self.victimIndex)                                             # Deleting the item
+                break
+        rounds.pop(roundIndex)                                                              # Deleting the round
 
     def manageEnemyCollition(self, enemyIndex):
         global rounds, enemies
 
-        self.roundX = enemies[enemyIndex].getX()
-        self.roundY = enemies[enemyIndex].getY() +1
+        self.targetX = enemies[enemyIndex].getX()
+        self.targetY = enemies[enemyIndex].getY() +1
 
         for i in rounds:                                                                      # Testing if object is a round
-            if i.getX == self.roundX and i.getY == self.roundY:
+            if i.getX == self.targetX and i.getY == self.targetY:
                 self.roundIndex = rounds.index(i)
                 rounds.pop(self.roundIndex)                                                   # Deleting the round
                 enemies[enemyIndex].changeHealth(rounds[self.roundIndex].getDamage())         # Subtract the taken damage
@@ -90,15 +105,40 @@ class COLLITION_MANAGER: #------------------------------------------------------
                     enemies.pop(self.roundIndex)
                 break
         
-        if player.getX == self.roundX and player.getY == self.roundY:                         # Testing if object is the player
-            player.removeHealth(enemies[enemyIndex].getDamage())
-            if player.getHealth < 0:
-                # Action when player dies
+        if player.getX() == self.targetX and player.getY() == self.targetY:                         # Testing if object is the player
+            player.removeHealth(enemies[enemyIndex].getDamage())                              # Subtract the taken damage
+            enemies.pop(enemyIndex)                                                      # Deleting the enemy
+            if player.getHealth() <= 0:
+                print('Action when player dies')
+        else:
+            enemies.pop(enemyIndex)                                                 # Deleting the enemy
+            
+
+
+    def manageItemCollition(self, itemIndex):
+        global rounds, items
+
+        self.targetX = items[itemIndex].getX()
+        self.targetY = items[itemIndex].getY() +1
+
+        for i in rounds:                                                                      # Testing if object is a round
+            if i.getX == self.targetX and i.getY == self.targetY:
+                self.roundIndex = rounds.index(i)
+                rounds.pop(self.roundIndex)                                                   # Deleting the round
+                items.pop(self.roundIndex)                                                    # Deleting the item
+                break
+        
+        if player.getX() == self.targetX and player.getY() == self.targetY:                   # Testing if object is the player
+            if items[itemIndex].getType() == '+':
+                player.removeHealth(-25)
+            items.pop(itemIndex)                                                              # Deleting the enemy
+        else:
+            items.pop(itemIndex)
+
 
 
 
         
-
 class ITEM: #-------------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
@@ -130,7 +170,7 @@ class ITEM: #-------------------------------------------------------------------
         self.yPosition += 1
 
     def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition][self.xPosition +1] == ' ':
+        if displayArray[self.yPosition +1][self.xPosition] == ' ':
             self.moveDown()
             return 0
         else:
@@ -182,7 +222,7 @@ class ENEMY:    #---------------------------------------------------------------
         self.yPosition += 1
 
     def tryMoveDown(self):                        # Trying to move down, returns 0 when successful and 1 when not
-        if displayArray[self.yPosition][self.xPosition +1] == ' ':
+        if displayArray[self.yPosition +1][self.xPosition] == ' ':
             self.moveDown()
             return 0
         else:
@@ -338,10 +378,11 @@ class PLAYER:   #---------------------------------------------------------------
 
 # Attributes
 displayArray = []
-display = DISPLAY(50, 20)
+display = DISPLAY(40, 16)
 rounds = []
 player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
 enemies = []
+items = []
 collition_manager = COLLITION_MANAGER()
 
 timer = 0
@@ -352,6 +393,9 @@ def addEnemy(x, y, type = 'O', hp = 100):
     global enemies
     enemies.extend([ENEMY(x, y, type, hp)])
 
+def addItem(x, y, type = '+'):
+    global items
+    items.extend([ITEM(x, y, type)])
 
 def moveRounds():
     global rounds, collition_manager
@@ -364,6 +408,12 @@ def moveEnemies():
     for i in enemies:
         if i.tryMoveDown() == 1:
             collition_manager.manageEnemyCollition(enemies.index(i))
+
+def moveItems():
+    global items, collition_manager
+    for i in items:
+        if i.tryMoveDown() == 1:
+            collition_manager.manageItemCollition(items.index(i))
 
 
 
@@ -379,11 +429,16 @@ with KeyPoller.KeyPoller() as keyPoller:
 
         if timer%15 == 0:
             moveRounds()
-        elif timer > 120 and timer < 123:
-            moveEnemies()
-        elif timer > 240:
-            addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
-            timer = 0
+            if timer%120 == 0:
+                moveEnemies()
+                moveItems()
+                if timer%240 == 0:
+                    addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
+                    if timer > 480:
+                        nextXPos = random.randint(1, (len(displayArray[1])-2))
+                        if displayArray[1][nextXPos] == ' ':
+                            addItem(nextXPos, 1, '+')  
+                        timer = 0
 
         c = keyPoller.poll() 
         if not c is None:
