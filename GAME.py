@@ -37,6 +37,12 @@ class DISPLAY:  #---------------------------------------------------------------
             displayArray[i][0] = '#'                                                   # Sets the left column
             displayArray[i][-1] = '#'                                                  # Sets the right column
 
+    def clearDisplayArray(self):
+        global displayArray
+        for y in range(1, len(displayArray)):
+            for x in range(1,len(displayArray[y])):
+                displayArray[y][x] = ' '
+
     def setXY(self, x, y, char):
         global displayArray
         displayArray[y][x] = char
@@ -80,8 +86,67 @@ class DISPLAY:  #---------------------------------------------------------------
             self.setXY(x, int(self.SizeY/2), i)
             x += 1
 
-        
+    def printMainMenu(self, withContinue):
+        os.system('clear')
+        self.clearDisplayArray()
 
+        x = int((self.SizeX/2) -6)
+        for i in 'SPACE INVADERS':
+            self.setXY(x, int(self.SizeY/2) -3, i)
+            x += 1
+
+        x = int((self.SizeX/2) -4)
+        for i in '[N]EW GAME':
+            self.setXY(x, int(self.SizeY/2) -1, i)
+            x += 1
+
+        x = int((self.SizeX/2) -4)
+        for i in '[O]PTIONS':
+            self.setXY(x, int(self.SizeY/2), i)
+            x += 1
+
+        if withContinue:
+            x = int((self.SizeX/2) -4)
+            for i in '[C]ontinue':
+                self.setXY(x, int(self.SizeY/2) +1, i)
+                x += 1
+            
+        self.setBorder()
+        display.print2DArray(displayArray)
+
+    def printOptions(self, type = 0):                  # Prints the different option screens, default = 0, difficulty = 1, resolution = 2
+        os.system('clear')
+        self.clearDisplayArray()
+        if type == 0:
+            x = int((self.SizeX/2) -4)
+            for i in '[D]ifficulty':
+                self.setXY(x, int(self.SizeY/2) -1, i)
+                x += 1
+            x = int((self.SizeX/2) -4)
+            for i in '[R]esolution':
+                self.setXY(x, int(self.SizeY/2), i)
+                x += 1
+        elif type == 1:
+            x = int((self.SizeX/2) -4)
+            for i in '[E]asy':
+                self.setXY(x, int(self.SizeY/2) -2, i)
+                x += 1
+            x = int((self.SizeX/2) -4)
+            for i in '[N]ormal':
+                self.setXY(x, int(self.SizeY/2) -1, i)
+                x += 1
+            x = int((self.SizeX/2) -4)
+            for i in '[H]ard':
+                self.setXY(x, int(self.SizeY/2), i)
+                x += 1
+        elif type == 2:
+            # Add reolution screen here
+            print('Add reolution screen here')
+
+        self.setBorder()
+        display.print2DArray(displayArray)
+
+        
 
 
 class COLLITION_MANAGER: #-------------------------------------------------------------------------------------------------------------------------
@@ -155,8 +220,7 @@ class COLLITION_MANAGER: #------------------------------------------------------
 
 
 
-
-        
+   
 class ITEM: #-------------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
@@ -193,7 +257,6 @@ class ITEM: #-------------------------------------------------------------------
             return 0
         else:
             return 1
-
 
 
 
@@ -249,7 +312,6 @@ class ENEMY:    #---------------------------------------------------------------
 
 
 
-
 class ROUND:    #----------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
@@ -290,7 +352,6 @@ class ROUND:    #---------------------------------------------------------------
             return 0
         else:
             return 1
-
 
 
 
@@ -389,10 +450,7 @@ class PLAYER:   #---------------------------------------------------------------
         rounds.extend([ROUND(self.xPosition, self.yPosition -1, '|', 100)])
 
 
-
-
 #-------------------------------------------------------------------------------------------------------------------------------------------------
-
 
 # Attributes
 displayArray = []
@@ -408,6 +466,19 @@ score = 0
 timer = 0
 
 # Functions
+def reset():
+    global displayArray, display, rounds, player, enemies, items, collition_manager, stop, score, timer
+    displayArray = []
+    display = DISPLAY(40, 16)
+    rounds = []
+    player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
+    enemies = []
+    items = []
+    collition_manager = COLLITION_MANAGER()
+
+    stop = False
+    score = 0
+    timer = 0
 
 def addEnemy(x, y, type = 'O', hp = 100):
     global enemies
@@ -436,44 +507,100 @@ def moveItems():
             collition_manager.manageItemCollition(items.index(i))
 
 def gameOver():
-    global stop
+    global stop, display
     stop = True
     display.refresh()
 
+def runOptions():
+    global display
+    optionType = 0                                                      # default = 0, difficulty = 1, reolution = 2
+    with KeyPoller.KeyPoller() as keyPoller:
+        display.printOptions()
+        keyPoller = KeyPoller.KeyPoller()
+        while True:
 
-# MAIN     ----------------------------------------------------------------------------------------------------------------------------------------
+            c = keyPoller.poll()                                        # Gets user input
+            if not c is None:
+                if c == "d" and optionType == 0:
+                    optionType = 1
+                    display.printOptions(1)
+                elif c == "r" and optionType == 0:
+                    optionType = 2
+                    display.printOptions(2)
+                elif c == "e" and optionType == 1:
+                    print('e')
+                    optionType = 0
+                    display.printOptions(0)
+                elif c == "n" and optionType == 1:
+                    print('n')
+                    optionType = 0
+                    display.printOptions(0)
+                elif c == "h" and optionType == 1:
+                    print('h')
+                    optionType = 0
+                    display.printOptions(0)
+                elif c == "q" and optionType == 0:
+                    break
+                elif c == "q":
+                    optionType = 0
+                    display.printOptions(0)
+
+#----------------------------------------------------------------------------------------------------------------------------------------
+def runGame():
+    global timer, display
+    with KeyPoller.KeyPoller() as keyPoller:
+        display.setBorder()
+        keyPoller = KeyPoller.KeyPoller()
+        while stop == False:
+            timer += 1
+            display.refresh()
+
+            if timer%15 == 0:
+                moveRounds()
+                if timer%240 == 0:
+                    moveEnemies()
+                    moveItems()
+                    if timer%480 == 0:
+                        addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
+                        if timer > 960:
+                            nextXPos = random.randint(1, (len(displayArray[1])-2))
+                            if displayArray[1][nextXPos] == ' ':
+                                addItem(nextXPos, 1, '+')  
+                            timer = 0
+
+            c = keyPoller.poll()                                        # Gets user input
+            if not c is None:
+                if c == "w":
+                    player.tryMoveUp()
+                elif c == "s":
+                    player.tryMoveDown()
+                elif c == "d":
+                    player.tryMoveRight()
+                elif c == "a":
+                    player.tryMoveLeft()
+                elif c == " ":
+                    player.shoot()
+                elif c == "q":
+                    break
+
+
+
+display.printMainMenu(False)
 
 with KeyPoller.KeyPoller() as keyPoller:
-    display.setBorder()
     keyPoller = KeyPoller.KeyPoller()
-    while stop == False:
-        timer += 1
-        display.refresh()
-
-        if timer%15 == 0:
-            moveRounds()
-            if timer%240 == 0:
-                moveEnemies()
-                moveItems()
-                if timer%480 == 0:
-                    addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
-                    if timer > 960:
-                        nextXPos = random.randint(1, (len(displayArray[1])-2))
-                        if displayArray[1][nextXPos] == ' ':
-                            addItem(nextXPos, 1, '+')  
-                        timer = 0
-
-        c = keyPoller.poll()                                        # Gets user input
+    while True:
+        c = keyPoller.poll()                                       # Gets user input
         if not c is None:
-            if c == "w":
-                player.tryMoveUp()
-            elif c == "s":
-                player.tryMoveDown()
-            elif c == "d":
-                player.tryMoveRight()
-            elif c == "a":
-                player.tryMoveLeft()
-            elif c == " ":
-                player.shoot()
+            if c == "n":
+                reset()
+                runGame()
+                display.printMainMenu(True)
+            elif c == "c":
+                runGame()
+                display.printMainMenu(True)
+            elif c == "o":
+                runOptions()
+                display.printMainMenu(True)
             elif c == "q":
                 break
