@@ -32,7 +32,6 @@ class DISPLAY:  #---------------------------------------------------------------
     def setBorder(self):
         displayArray[0] = ['#']*len(displayArray[0])                           # Sets the upper row
         displayArray[-1] = ['#']*len(displayArray[-1])                         # Sets the lower row
-
         for i in range(len(displayArray)):
             displayArray[i][0] = '#'                                                   # Sets the left column
             displayArray[i][-1] = '#'                                                  # Sets the right column
@@ -46,6 +45,12 @@ class DISPLAY:  #---------------------------------------------------------------
     def setXY(self, x, y, char):
         global displayArray
         displayArray[y][x] = char
+
+    def setStringAtXY(self, string, xCenterOffset = 0, yCenterOffset = 0):
+        x = int((self.SizeX/2) +xCenterOffset)
+        for i in string:
+            self.setXY(x, int(self.SizeY/2) +yCenterOffset, i)
+            x += 1
 
     def setAllPositions(self):                                                      # Sets all positions of all object
         for i in range(1, len(displayArray)-1):
@@ -81,36 +86,16 @@ class DISPLAY:  #---------------------------------------------------------------
                 self.setXY(2, 1, num[len(num)-3])
 
     def setGameOver(self):
-        x = int((self.SizeX/2) -4)
-        for i in 'GAME OVER':
-            self.setXY(x, int(self.SizeY/2), i)
-            x += 1
+        self.setStringAtXY('GAME OVER', -4, 0)
 
     def printMainMenu(self, withContinue):
         os.system('clear')
         self.clearDisplayArray()
-
-        x = int((self.SizeX/2) -6)
-        for i in 'SPACE INVADERS':
-            self.setXY(x, int(self.SizeY/2) -3, i)
-            x += 1
-
-        x = int((self.SizeX/2) -4)
-        for i in '[N]EW GAME':
-            self.setXY(x, int(self.SizeY/2) -1, i)
-            x += 1
-
-        x = int((self.SizeX/2) -4)
-        for i in '[O]PTIONS':
-            self.setXY(x, int(self.SizeY/2), i)
-            x += 1
-
+        self.setStringAtXY('SPACE INVADERS', -7, -3)
+        self.setStringAtXY('[N]EW GAME', -5, -1)
+        self.setStringAtXY('[O]PTIONS', -5, 0)
         if withContinue:
-            x = int((self.SizeX/2) -4)
-            for i in '[C]ontinue':
-                self.setXY(x, int(self.SizeY/2) +1, i)
-                x += 1
-            
+            self.setStringAtXY('[C]ONTINUE', -5, 1) 
         self.setBorder()
         display.print2DArray(displayArray)
 
@@ -118,31 +103,15 @@ class DISPLAY:  #---------------------------------------------------------------
         os.system('clear')
         self.clearDisplayArray()
         if type == 0:
-            x = int((self.SizeX/2) -4)
-            for i in '[D]ifficulty':
-                self.setXY(x, int(self.SizeY/2) -1, i)
-                x += 1
-            x = int((self.SizeX/2) -4)
-            for i in '[R]esolution':
-                self.setXY(x, int(self.SizeY/2), i)
-                x += 1
+            self.setStringAtXY('[D]IFFICULTY', -6, -2)
+            self.setStringAtXY('[R]ESOLUTION', -6, -1)
         elif type == 1:
-            x = int((self.SizeX/2) -4)
-            for i in '[E]asy':
-                self.setXY(x, int(self.SizeY/2) -2, i)
-                x += 1
-            x = int((self.SizeX/2) -4)
-            for i in '[N]ormal':
-                self.setXY(x, int(self.SizeY/2) -1, i)
-                x += 1
-            x = int((self.SizeX/2) -4)
-            for i in '[H]ard':
-                self.setXY(x, int(self.SizeY/2), i)
-                x += 1
+            self.setStringAtXY('[E]ASY', -4, -2)
+            self.setStringAtXY('[N]ORMAL', -4, -1)
+            self.setStringAtXY('[H]ARD', -4, 0)
         elif type == 2:
             # Add reolution screen here
             print('Add reolution screen here')
-
         self.setBorder()
         display.print2DArray(displayArray)
 
@@ -460,6 +429,7 @@ player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
 enemies = []
 items = []
 collition_manager = COLLITION_MANAGER()
+keyPoller = KeyPoller.KeyPoller()
 
 stop = False
 score = 0
@@ -479,6 +449,18 @@ def reset():
     stop = False
     score = 0
     timer = 0
+    optionType = 0
+
+def runAtRate(func, rate = 30):
+    sleepTime = 1/rate
+    while True:
+        x = 0
+        startTime = time.perf_counter()
+        while x < rate:
+            if func() == False:
+                return None
+            time.sleep(sleepTime)
+        sleepTime = (startTime - time.perf_counter())/rate
 
 def addEnemy(x, y, type = 'O', hp = 100):
     global enemies
@@ -511,77 +493,68 @@ def gameOver():
     stop = True
     display.refresh()
 
-def runOptions():
-    global display
-    optionType = 0                                                      # default = 0, difficulty = 1, reolution = 2
-    with KeyPoller.KeyPoller() as keyPoller:
-        display.printOptions()
-        keyPoller = KeyPoller.KeyPoller()
-        while True:
+def runOptions():              
+    global display, keyPoller, optionType                       # optionType -> default = 0, difficulty = 1, reolution = 2
 
-            c = keyPoller.poll()                                        # Gets user input
-            if not c is None:
-                if c == "d" and optionType == 0:
-                    optionType = 1
-                    display.printOptions(1)
-                elif c == "r" and optionType == 0:
-                    optionType = 2
-                    display.printOptions(2)
-                elif c == "e" and optionType == 1:
-                    print('e')
-                    optionType = 0
-                    display.printOptions(0)
-                elif c == "n" and optionType == 1:
-                    print('n')
-                    optionType = 0
-                    display.printOptions(0)
-                elif c == "h" and optionType == 1:
-                    print('h')
-                    optionType = 0
-                    display.printOptions(0)
-                elif c == "q" and optionType == 0:
-                    break
-                elif c == "q":
-                    optionType = 0
-                    display.printOptions(0)
+    c = keyPoller.poll()                                        # Gets user input
+    if not c is None:
+        if c == "d" and optionType == 0:
+            optionType = 1
+            display.printOptions(1)
+        elif c == "r" and optionType == 0:
+            optionType = 2
+            display.printOptions(2)
+        elif c == "e" and optionType == 1:
+            print('e')
+            optionType = 0
+            display.printOptions(0)
+        elif c == "n" and optionType == 1:
+            print('n')
+            optionType = 0
+            display.printOptions(0)
+        elif c == "h" and optionType == 1:
+            print('h')
+            optionType = 0
+            display.printOptions(0)
+        elif c == "q" and optionType == 0:
+            return False
+        elif c == "q":
+            optionType = 0
+            display.printOptions(0)
 
 #----------------------------------------------------------------------------------------------------------------------------------------
 def runGame():
-    global timer, display
-    with KeyPoller.KeyPoller() as keyPoller:
-        display.setBorder()
-        keyPoller = KeyPoller.KeyPoller()
-        while stop == False:
-            timer += 1
-            display.refresh()
+    global timer, display, keyPoller
+    timer += 1
+    display.refresh()
 
-            if timer%15 == 0:
-                moveRounds()
-                if timer%240 == 0:
-                    moveEnemies()
-                    moveItems()
-                    if timer%480 == 0:
-                        addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
-                        if timer > 960:
-                            nextXPos = random.randint(1, (len(displayArray[1])-2))
-                            if displayArray[1][nextXPos] == ' ':
-                                addItem(nextXPos, 1, '+')  
-                            timer = 0
+    if timer%5 == 0:
+        moveRounds()
+        if timer%60 == 0:
+            moveEnemies()
+            moveItems()
+            if timer%120 == 0:
+                addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
+                if timer > 480:
+                    nextXPos = random.randint(1, (len(displayArray[1])-2))
+                    if displayArray[1][nextXPos] == ' ':
+                        addItem(nextXPos, 1, '+')  
+                    timer = 0
 
-            c = keyPoller.poll()                                        # Gets user input
-            if not c is None:
-                if c == "w":
-                    player.tryMoveUp()
-                elif c == "s":
-                    player.tryMoveDown()
-                elif c == "d":
-                    player.tryMoveRight()
-                elif c == "a":
-                    player.tryMoveLeft()
-                elif c == " ":
-                    player.shoot()
-                elif c == "q":
-                    break
+    c = keyPoller.poll()                                        # Gets user input
+    if not c is None:
+        if c == "w":
+            player.tryMoveUp()
+        elif c == "s":
+            player.tryMoveDown()
+        elif c == "d":
+            player.tryMoveRight()
+        elif c == "a":
+            player.tryMoveLeft()
+        elif c == " ":
+            player.shoot()
+        elif c == "q":
+            return False
 
 
 
@@ -594,13 +567,16 @@ with KeyPoller.KeyPoller() as keyPoller:
         if not c is None:
             if c == "n":
                 reset()
-                runGame()
-                display.printMainMenu(True)
+                display.setBorder()
+                runAtRate(runGame, 60)
+                display.printMainMenu(score != 0)
             elif c == "c":
-                runGame()
-                display.printMainMenu(True)
+                display.setBorder()
+                runAtRate(runGame, 60)
+                display.printMainMenu(score != 0)
             elif c == "o":
-                runOptions()
-                display.printMainMenu(True)
+                display.printOptions(0)
+                runAtRate(runOptions)
+                display.printMainMenu(score != 0)
             elif c == "q":
                 break
