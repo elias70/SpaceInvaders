@@ -100,6 +100,7 @@ class DISPLAY:  #---------------------------------------------------------------
         display.print2DArray(displayArray)
 
     def printOptions(self, type = 0):                  # Prints the different option screens, default = 0, difficulty = 1, resolution = 2
+        global width, height
         os.system('clear')
         self.clearDisplayArray()
         if type == 0:
@@ -110,8 +111,9 @@ class DISPLAY:  #---------------------------------------------------------------
             self.setStringAtXY('[N]ORMAL', -4, -1)
             self.setStringAtXY('[H]ARD', -4, 0)
         elif type == 2:
-            # Add reolution screen here
-            print('Add reolution screen here')
+            self.setStringAtXY('RESOLUTION:', -5, -2)
+            self.setStringAtXY(f'{width} x {height}', -5, -1)
+            self.setStringAtXY('[C]HANGE', -5, +1)
         self.setBorder()
         display.print2DArray(displayArray)
 
@@ -233,7 +235,7 @@ class ITEM: #-------------------------------------------------------------------
 class ENEMY:    #---------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
-    def __init__(self, x = 0, y = 0, type = '?', hp = 100, damage = 25):
+    def __init__(self, x = 0, y = 0, type = 'O', hp = 100, damage = 25):
         self.xPosition = x
         self.yPosition = y
         self.enemyType = type
@@ -284,7 +286,7 @@ class ENEMY:    #---------------------------------------------------------------
 class ROUND:    #----------------------------------------------------------------------------------------------------------------------------------
 
 #   Constructor/Attributes
-    def __init__(self, x = 0, y = 0, roundType = '?', damage = 100):
+    def __init__(self, x = 0, y = 0, roundType = '|', damage = 100):
         self.xPosition = x
         self.yPosition = y
         self.ammoType = roundType
@@ -416,14 +418,23 @@ class PLAYER:   #---------------------------------------------------------------
 
     def shoot(self):        
         global rounds
-        rounds.extend([ROUND(self.xPosition, self.yPosition -1, '|', 100)])
+        rounds.extend([ROUND(self.xPosition, self.yPosition -1)])
 
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Attributes
+stop = False
+score = 0
+timer = 0
+optionType = 0
+width = 40
+height = 16
+#difficulty = 1                          # -> 1:easy 2:normal 3:hard
+difficultyMultiplier = 1                # -> 0.5:easy 1:normal 2:hard
+
 displayArray = []
-display = DISPLAY(40, 16)
+display = DISPLAY(width, height)
 rounds = []
 player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
 enemies = []
@@ -431,25 +442,24 @@ items = []
 collition_manager = COLLITION_MANAGER()
 keyPoller = KeyPoller.KeyPoller()
 
-stop = False
-score = 0
-timer = 0
 
 # Functions
 def reset():
-    global displayArray, display, rounds, player, enemies, items, collition_manager, stop, score, timer
+    global displayArray, display, rounds, player, enemies, items, collition_manager, stop, score, timer, optionType, width, height
+    
+    stop = False
+    score = 0
+    timer = 0
+    optionType = 0
+
     displayArray = []
-    display = DISPLAY(40, 16)
+    display = DISPLAY(width, height)
     rounds = []
     player = PLAYER(int(display.SizeX/2), display.SizeY-3, 'A')
     enemies = []
     items = []
     collition_manager = COLLITION_MANAGER()
-
-    stop = False
-    score = 0
-    timer = 0
-    optionType = 0
+    
 
 def runAtRate(func, rate = 30):
     sleepTime = 1/rate
@@ -493,30 +503,58 @@ def gameOver():
     stop = True
     display.refresh()
 
-def runOptions():              
-    global display, keyPoller, optionType                       # optionType -> default = 0, difficulty = 1, reolution = 2
+def getResolutionInput():
+    global width, height
+    while True:    
+        try:
+            x = input("WIDTH: min.20/max.200 >")
+            print(x)
+            x = int(x)
+            if x >= 20 and x <= 200:
+                break
+        except ValueError:
+            continue
+    while True:
+        try:
+            y = input("HEIGHT: min.8/max.50 >")
+            print(y)
+            y = int(y)
+            if x >= 20 and x <= 200:
+                break
+        except ValueError:
+            continue
+    width = x
+    height = y
 
+
+def runOptions():              
+    global display, keyPoller, optionType, width, height, difficultyMultiplier               # optionType -> default = 0, difficulty = 1, reolution = 2
+    x = optionType
     c = keyPoller.poll()                                        # Gets user input
     if not c is None:
-        if c == "d" and optionType == 0:
+        if c == "d" and x == 0:
             optionType = 1
             display.printOptions(1)
-        elif c == "r" and optionType == 0:
+        elif c == "r" and x == 0:
             optionType = 2
             display.printOptions(2)
-        elif c == "e" and optionType == 1:
-            print('e')
+        elif c == "c" and x == 2:
+            getResolutionInput()
+            reset()
+            display.printOptions(2)
+        elif c == "e" and x == 1:
+            difficultyMultiplier = 0.5
             optionType = 0
             display.printOptions(0)
-        elif c == "n" and optionType == 1:
-            print('n')
+        elif c == "n" and x == 1:
+            difficultyMultiplier = 1
             optionType = 0
             display.printOptions(0)
-        elif c == "h" and optionType == 1:
-            print('h')
+        elif c == "h" and x == 1:
+            difficultyMultiplier = 2
             optionType = 0
             display.printOptions(0)
-        elif c == "q" and optionType == 0:
+        elif c == "q" and x == 0:
             return False
         elif c == "q":
             optionType = 0
@@ -530,12 +568,12 @@ def runGame():
 
     if timer%5 == 0:
         moveRounds()
-        if timer%60 == 0:
+        if timer%(30/difficultyMultiplier) == 0:
             moveEnemies()
             moveItems()
-            if timer%120 == 0:
-                addEnemy(random.randint(1, (len(displayArray[1])-2)), 1)
-                if timer > 480:
+            if timer%(60/difficultyMultiplier) == 0:
+                addEnemy(random.randint(1, (len(displayArray[1])-2)), 1,'O' , 100/difficultyMultiplier)
+                if timer > (120/difficultyMultiplier):
                     nextXPos = random.randint(1, (len(displayArray[1])-2))
                     if displayArray[1][nextXPos] == ' ':
                         addItem(nextXPos, 1, '+')  
@@ -576,7 +614,7 @@ with KeyPoller.KeyPoller() as keyPoller:
                 display.printMainMenu(score != 0)
             elif c == "o":
                 display.printOptions(0)
-                runAtRate(runOptions)
+                runAtRate(runOptions, 15)
                 display.printMainMenu(score != 0)
             elif c == "q":
                 break
